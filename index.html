@@ -190,6 +190,11 @@
                 border: none;
                 /* Yazıcıda çerçeve olmasın */
             }
+
+            /* Yazıcıda butonları gizle */
+            .barcode-item button {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -257,20 +262,38 @@
                 }
 
                 codes.forEach(code => {
-                    // Wrapper oluştur
+                    // Wrapper
                     const wrapper = document.createElement('div');
                     wrapper.className = 'barcode-item';
 
-                    // Canvas oluştur
+                    // Canvas
                     const canvas = document.createElement('canvas');
                     wrapper.appendChild(canvas);
+
+                    // İndirme Butonu
+                    const dwnBtn = document.createElement('button');
+                    dwnBtn.innerText = 'İndir';
+                    dwnBtn.style.marginTop = '10px';
+                    dwnBtn.style.padding = '5px 15px';
+                    dwnBtn.style.fontSize = '14px';
+                    dwnBtn.style.cursor = 'pointer';
+                    dwnBtn.onclick = function () {
+                        const link = document.createElement('a');
+                        const safeName = code.replace(/[^a-z0-9]/gi, '_');
+                        link.download = `Assemcorp_Raf_${safeName}.png`;
+                        link.href = canvas.toDataURL("image/png");
+                        link.click();
+                    };
+                    wrapper.appendChild(dwnBtn);
+
                     grid.appendChild(wrapper);
 
                     // Çiz
-                    drawBarcode(canvas, code);
+                    if (typeof drawBarcode === 'function') {
+                        drawBarcode(canvas, code);
+                    }
                 });
 
-                // Kontrolleri göster
                 if (codes.length > 0) {
                     actions.style.display = 'block';
                 }
