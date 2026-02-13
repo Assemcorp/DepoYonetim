@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assemcorp | Depo Yönetim Sistemi</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -225,8 +227,8 @@
                 <p id="placeholder-text">Barkod oluşturmak için raf numarası veya aralığı girin.</p>
                 <div class="actions" id="actionButtons">
                     <button class="print-btn" onclick="window.print()">Yazdır</button>
-                    <!-- Çoklu indirme karmaşık olabileceği için şimdilik gizli veya tekli çalışır -->
-                    <!-- <button onclick="downloadImg()">Resim Olarak İndir</button> -->
+                    <button class="download-all-btn" onclick="downloadAll()"
+                        style="background-color: var(--accent-color); color: white;">Tümünü İndir</button>
                 </div>
             </div>
 
@@ -265,6 +267,7 @@
                     // Wrapper
                     const wrapper = document.createElement('div');
                     wrapper.className = 'barcode-item';
+                    wrapper.setAttribute('data-code', code);
 
                     // Canvas
                     const canvas = document.createElement('canvas');
@@ -277,12 +280,31 @@
                     dwnBtn.style.padding = '5px 15px';
                     dwnBtn.style.fontSize = '14px';
                     dwnBtn.style.cursor = 'pointer';
-                    dwnBtn.onclick = function () {
-                        const link = document.createElement('a');
+                    dwnBtn.onclick = async function () {
                         const safeName = code.replace(/[^a-z0-9]/gi, '_');
-                        link.download = `Assemcorp_Raf_${safeName}.png`;
-                        link.href = canvas.toDataURL("image/png");
-                        link.click();
+                        const fileName = `Assemcorp_Raf_${safeName}.png`;
+
+                        try {
+                            // Try File System Access API
+                            if (window.showSaveFilePicker) {
+                                const handle = await window.showSaveFilePicker({
+                                    suggestedName: fileName,
+                                    types: [{ description: 'PNG Image', accept: { 'image/png': ['.png'] } }],
+                                });
+                                const writable = await handle.createWritable();
+                                canvas.toBlob(async (blob) => {
+                                    await writable.write(blob);
+                                    await writable.close();
+                                });
+                            } else {
+                                // Fallback
+                                canvas.toBlob((blob) => {
+                                    saveAs(blob, fileName);
+                                }, 'image/png');
+                            }
+                        } catch (err) {
+                            if (err.name !== 'AbortError') console.error(err);
+                        }
                     };
                     wrapper.appendChild(dwnBtn);
 
@@ -297,6 +319,63 @@
                 if (codes.length > 0) {
                     actions.style.display = 'block';
                 }
+            }
+
+            async function downloadAll() {
+                const wrappers = document.querySelectorAll('.barcode-item');
+
+                if (wrappers.length === 0) {
+                    alert("İndirilecek barkod bulunamadı.");
+                    return;
+                }
+
+                if (window.showDirectoryPicker) {
+                    try {
+                        const dirHandle = await window.showDirectoryPicker();
+                        let count = 0;
+                        for (const wrapper of wrappers) {
+                            const code = wrapper.getAttribute('data-code');
+                            const canvas = wrapper.querySelector('canvas');
+                            if (code && canvas) {
+                                const safeName = code.replace(/[^a-z0-9]/gi, '_');
+                                const fileName = `Assemcorp_Raf_${safeName}.png`;
+                                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                                const writable = await fileHandle.createWritable();
+
+                                await new Promise(resolve => canvas.toBlob(async (blob) => {
+                                    await writable.write(blob);
+                                    await writable.close();
+                                    resolve();
+                                }));
+                                count++;
+                            }
+                        }
+                        alert(`${count} adet barkod klasöre başarıyla kaydedildi!`);
+                        return;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return;
+                        console.warn("Klasör erişimi başarısız, ZIP deneniyor...", err);
+                    }
+                }
+
+                const zip = new JSZip();
+                wrappers.forEach((wrapper) => {
+                    const code = wrapper.getAttribute('data-code');
+                    const canvas = wrapper.querySelector('canvas');
+                    if (code && canvas) {
+                        const dataUrl = canvas.toDataURL("image/png");
+                        // Base64 başlığını temizle
+                        const base64Data = dataUrl.replace(/^data:image\/(png|jpg);base64,/, "");
+                        // Dosya adı
+                        const safeName = code.replace(/[^a-z0-9]/gi, '_');
+                        zip.file(`Assemcorp_Raf_${safeName}.png`, base64Data, { base64: true });
+                    }
+                });
+
+                zip.generateAsync({ type: "blob" })
+                    .then(function (content) {
+                        saveAs(content, "Assemcorp_Raf_Barkodlari.zip");
+                    });
             }
 
             function parseInput(input) {
