@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assemcorp | Depo Yönetim Sistemi</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 1rem 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            margin-top: 30px;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent-color);
+        }
+
+        button {
+            padding: 12px 25px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #barcode-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+            min-height: 200px;
+            justify-content: center;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: none; /* Barkod oluşmadan görünmez */
+            gap: 10px;
+        }
+
+        .print-btn {
+            background-color: #27ae60;
+        }
+
+        /* Yazdırma Ayarları */
+        @media print {
+            body * { visibility: hidden; }
+            #barcode-container, #barcode-container * { visibility: visible; }
+            #barcode-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                border: none;
+            }
+            .actions, header, .input-group { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>ASSEMCORP</h1>
+    <p>Depo Yönetim Uygulaması | Barkod Modülü</p>
+</header>
+
+<div class="container">
+    <div class="input-group">
+        <input type="text" id="rackInput" placeholder="Raf Numarasını Girin (Örn: A1, L6...)" onkeypress="handleKeyPress(event)">
+        <button onclick="generate()">Barkod Oluştur</button>
+    </div>
+
+    <div id="barcode-container">
+        <p id="placeholder-text">Barkod burada görünecek...</p>
+        <canvas id="barcode"></canvas>
+        
+        <div class="actions" id="actionButtons">
+            <button class="print-btn" onclick="window.print()">Yazdır</button>
+            <button onclick="downloadImg()">Resim Olarak İndir</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function generate() {
+        const val = document.getElementById('rackInput').value.trim();
+        const canvas = document.getElementById('barcode');
+        const placeholder = document.getElementById('placeholder-text');
+        const actions = document.getElementById('actionButtons');
+
+        if (!val) {
+            alert("Lütfen bir raf numarası girin!");
+            return;
+        }
+
+        // Barkod oluşturma
+        JsBarcode("#barcode", val, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2.5,
+            height: 100,
+            displayValue: true, // Barkodun altında metni yazar
+            fontSize: 20,
+            fontOptions: "bold",
+            margin: 10
+        });
+
+        // UI Güncelleme
+        placeholder.style.display = 'none';
+        canvas.style.display = 'block';
+        actions.style.display = 'flex';
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') generate();
+    }
+
+    function downloadImg() {
+        const canvas = document.getElementById('barcode');
+        const link = document.createElement('a');
+        const val = document.getElementById('rackInput').value;
+        link.download = `Assemcorp_Raf_${val}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    }
+</script>
+
+</body>
+</html>
